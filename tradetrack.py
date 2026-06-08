@@ -1,15 +1,28 @@
-from fastapi import FastAPI, Response, Cookie, HTTPException
+import os
+import json
+from fastapi import FastAPI, Response, Cookie, HTTPException, Request
 from pydantic import BaseModel
 from datetime import datetime
-import json
-import os
 from fastapi.responses import HTMLResponse, RedirectResponse
 from passlib.context import CryptContext
+from google import genai
+from dotenv import load_dotenv
+from google.api_core import exceptions
+from fastapi import Request
 
 app = FastAPI()
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 USERS_FILE = "users.json"
 TRADES_FILE = "trade_track.json"
+
+load_dotenv()
+
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+
+if not GEMINI_API_KEY:
+    print("⚠️ WARNING: GEMINI_API_KEY is missing from your environment setup!")
+
+ai_client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
 
 class UserSignup(BaseModel):
     username: str
@@ -30,6 +43,9 @@ class Entry(BaseModel):
     date: str
     pnl: float
     note: str
+
+class ChatRequest(BaseModel):
+    message: str
 
 
 def get_users():
@@ -161,6 +177,7 @@ def mobile_interface(session_user: str = Cookie(None)):
             .win {{ background: #d4edda; color: #155724; }}
             .loss {{ background: #f8d7da; color: #721c24; }}
             .history-item {{ border-bottom: 1px dashed black; padding: 10px 0; font-size: 0.8rem; display: flex; justify-content: space-between; align-items: center; }}
+            .chat-messages {{ height: 180px; overflow-y: auto; border: 2px solid black; padding: 8px; background: #fafafa; margin-bottom: 10px; font-size: 0.8rem; }}
         </style>
     </head>
     <body>
@@ -181,6 +198,17 @@ def mobile_interface(session_user: str = Cookie(None)):
             <div id="summary" class="card" style="text-align: center; background: #ffff00;">Loading Summary...</div>
 
             <div class="card">
+                <strong style="font-size: 0.8rem;">ASK TRADETRACK AI</strong>
+                <div class="chat-messages" id="chat-box">
+                    <div><span style="color:#555;">AI: Ask me anything about your logic, symmetry patterns, or code.</span></div>
+                </div>
+                <div style="display: flex; gap: 5px;">
+                    <input id="chat-input" placeholder="Type a message..." onkeydown="if(event.key==='Enter') askAI()">
+                    <button style="width: 80px;" onclick="askAI()">ASK</button>
+                </div>
+            </div>
+
+            <div class="card">
                 <strong style="font-size: 0.8rem;">LOG TRADE</strong>
                 <input type="date" id="log-date">
                 <input type="number" id="log-pnl" placeholder="PnL (e.g. 50 or -20)">
@@ -198,6 +226,35 @@ def mobile_interface(session_user: str = Cookie(None)):
 
         <script>
             document.getElementById('log-date').valueAsDate = new Date();
+
+            async function askAI() {{
+                const input = document.getElementById('chat-input');
+                const box = document.getElementById('chat-box');
+                const text = input.value.trim();
+                if(!text) return;
+
+                box.innerHTML += `<div style="margin-top:4px;"><strong>YOU:</strong> ${{text}}</div>`;
+                input.value = '';
+                box.scrollTop = box.scrollHeight;
+
+                try {{
+                    const res = await fetch('/chat', {{
+                        method: 'POST',
+                        headers: {{'Content-Type': 'application/json'}},
+                        body: JSON.stringify({{ message: text }})
+                    }});
+                    const data = await res.json();
+                    if(res.ok) {{
+                        // FIXED: Changed data.reply to data.reply to match updated backend key
+                        box.innerHTML += `<div style="margin-top:4px; color:#0055ff;"><strong>AI:</strong> ${{data.reply}}</div>`;
+                    }} else {{
+                        box.innerHTML += `<div style="margin-top:4px; color:red;"><strong>AI:</strong> ${{data.detail || 'Error processing request.'}}</div>`;
+                    }}
+                }} catch(e) {{
+                    box.innerHTML += `<div style="margin-top:4px; color:red;"><strong>AI:</strong> Connection lost.</div>`;
+                }}
+                box.scrollTop = box.scrollHeight;
+            }}
 
             async function updateCapital() {{
                 const amount = document.getElementById('cap-input').value;
@@ -295,6 +352,64 @@ def mobile_interface(session_user: str = Cookie(None)):
     </html>
     """
 
+@app.post("/chat")
+async def chat(request: Request):
+    
+    try:
+        data = await request.json()
+        user_message = data.get("message", "")
+        
+        username = data.get("username", "Guest")
+    except Exception:
+        try:
+            
+            body = await request.body()
+            user_message = body.decode("utf-8").strip()
+            username = "Guest"
+        except Exception:
+            return {"reply": "I didn't catch that. Could you try retyping your message?"}
+
+    if not user_message:
+        return {"reply": "The message appears to be empty. What's on your mind?"}
+
+    if not ai_client:
+        return {"reply": "AI Service is currently unconfigured on this host."}
+
+    user_trades = []
+    if os.path.exists(TRADES_FILE):
+        try:
+            with open(TRADES_FILE, "r") as f:
+                all_trades = json.load(f)
+                if isinstance(all_trades, list):
+                    user_trades = [t for t in all_trades if t.get("user") == username]
+                elif isinstance(all_trades, dict):
+                    user_trades = all_trades.get(username, [])
+        except Exception as e:
+            print(f"File read fallback error: {e}")
+            user_trades = []
+
+    history_context = f"User History: {json.dumps(user_trades)}" if user_trades else "No trades recorded yet."
+    full_prompt = (
+        f"You are TradeTrack AI. An assistant for an independent market trader. "
+        f"Review their logged history metrics if available and answer concisely.\n\n"
+        f"{history_context}\n\n"
+        f"User Question: {user_message}"
+    )
+
+    try:
+        response = ai_client.models.generate_content(
+            model="gemini-2.0-flash", 
+            contents=full_prompt
+        )
+        return {"reply": response.text}
+        
+    except exceptions.ResourceExhausted as e:
+        print(f"Gemini API Quota Exceeded: {e}")
+        return {"reply": "The AI service is currently rate-limited or out of API quota. Please wait a bit before trying again."}
+    except Exception as e:
+        print(f"Gemini API Exception: {e}")
+        return {"reply": "Connected, but Gemini encountered an error processing this request."}
+    
 @app.post("/log")
 def log_entry(entry: Entry, session_user: str = Cookie(None)):
     if not session_user: raise HTTPException(status_code=401)
