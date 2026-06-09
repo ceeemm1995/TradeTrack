@@ -1,4 +1,5 @@
 import os
+import sys
 import json
 from fastapi import FastAPI, Response, Cookie, HTTPException, Request
 from pydantic import BaseModel
@@ -9,6 +10,7 @@ from google import genai
 from dotenv import load_dotenv
 from google.api_core import exceptions
 from fastapi import Request
+from fastapi.staticfiles import StaticFiles
 
 app = FastAPI()
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -17,12 +19,26 @@ TRADES_FILE = "trade_track.json"
 
 load_dotenv()
 
+if getattr(sys, 'frozen', False):
+    base_path = sys._MEIPASS
+else:
+    base_path = os.path.dirname(os.path.abspath(__file__))
+
+static_dir = os.path.join(base_path, "static")
+
+if not os.path.exists(static_dir):
+    os.makedirs(static_dir)
+
+app = FastAPI()
+
+app.mount("/static", StaticFiles(directory=static_dir), name="static")
+
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 
 if not GEMINI_API_KEY:
     print("⚠️ WARNING: GEMINI_API_KEY is missing from your environment setup!")
 
-ai_client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
+ai_client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY")) if GEMINI_API_KEY else None
 
 class UserSignup(BaseModel):
     username: str
@@ -76,7 +92,9 @@ def auth_page():
         </head>
         <body>
             <div class="card">
-                <h2 id="title">LOG IN</h2>
+                <div style="text-align: center; margin-bottom: 20px;">
+                <img src="/static/tradetrack_logo.png" alt="TradeTrack Logo" style="width: 100px; height: auto; border-radius: 8px;">
+            </div>
                 <label>USERNAME</label><input id="u" placeholder="Required">
                 <label>PASSWORD</label><input id="p" type="password" placeholder="Required">
                 <div id="signup-fields" style="display:none;">

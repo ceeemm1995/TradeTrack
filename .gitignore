@@ -1,31 +1,19 @@
-# ====================================================================
-# ENVIRONMENT SECRETS (NEVER PUSH TO GITHUB)
-# ====================================================================
+# Local Database & Private Assets
 .env
-
-# ====================================================================
-# LOCAL USER DATA & TRACKING DATABASES
-# ====================================================================
 users.json
 trade_track.json
-users.csv
 neuro_track_master.json
+users.csv
 
-# ====================================================================
-# SYSTEM & PYTHON CACHE CLUTTER
-# ====================================================================
+# PyInstaller & Compiler Cache Clutter
 __pycache__/
-*.pyc
-.python_history
-.gitconfig
+build/
+dist/
+*.spec
 
-# ====================================================================
-# IDE / EDITOR SPECIFIC CONFIGURATIONS
-# ====================================================================
-.vscode/
-.streamlit/
-desktop.ini
-# Coffee Project Files (Ignore for TradeTrack Repo)
+# Other Project Files (Keeping this repo strictly for TradeTrack)
 brewadose.py
 hellocoffee.py
+main.py
 coffee_cup.png
+wheel.png
