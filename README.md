@@ -1,28 +1,36 @@
-README.md
-A specialty coffee management system designed for Baristas, Roasters, and Home Brewers to synchronize roasting intelligence and brewing logs.
+READMEtradetrack.md
+# 📊 TradeTrack
 
-Features
+TradeTrack is a highly responsive, localized web-based trading journal application built with **FastAPI** and styled with a sharp, modern neo-brutalist UI layout. Specifically engineered for fast-paced financial market scalpers (Gold, Silver, Crude Oil), it leverages technical analysis tracking frameworks and features an integrated **Gemini AI Trading Assistant** to help review execution setups and protect psychological discipline.
 
-Role-Based Access: Separate interfaces and accounts for Roasters, Baristas, and Home Brewers.
+---
 
-Roaster Intelligence: Specialized forms to log charge temperature, DTR (Development Time Ratio), and roast duration.
+## ✨ Features
 
-Brewing Logs: A dedicated space for baristas to track daily extractions and recipes.
+* **🔒 Secure Local Authentication:** Fast, encrypted user registration and login using `passlib` (bcrypt) data structures.
+* **📈 Scalper-Focused Journaling:** Track daily trading sessions, market symmetry patterns, win/loss metrics, and risk-to-reward dynamics.
+* **🤖 Integrated Gemini AI Coach:** Send your journaled metrics or trading state straight to a dedicated AI model instance to receive rapid, objective system reviews and market structure analysis.
+* **🎨 Neo-Brutalist Interface:** Designed for quick data scannability with a high-contrast theme, custom vector branding assets, and zero heavy asset latency.
+* **📁 100% Local Data Privacy:** All user credentials and trading records are stored securely on your local hard drive via flat JSON file engines (`users.json`, `trade_track.json`). No external cloud database required.
 
-Interactive Flavor Wheel: A technical tool for sensory analysis (currently in development).
+---
 
-Tech Stack
-Language: Python 3.x
-Framework: Streamlit
-Version Control: Git / GitHub (Git Graph for history tracking)
+## 🛠️ Tech Stack
 
-Clone this repo.
-Install requirements: pip install streamlit
-Run the app: streamlit run brewadose.py
-Why this Project?
-This is where you can add a personal touch from your journal.
-Goal: To bridge the gap between roasters and baristas by synchronizing data in real-time to ensure quality and consistency in every cup.
+* **Backend:** FastAPI (Python 3.11+)
+* **Server Engine:** Uvicorn
+* **Security:** Passlib (Bcrypt hashing)
+* **AI Integration:** Google GenAI SDK (Gemini Core Engine)
+* **Database:** Local JSON File Systems
 
-About the Maker
-I am a professional barista and systems developer based in the Philippines. This project is a practical application of my transition into programming, designed to solve real-world data gaps in the specialty coffee industry.
+---
+
+## 🚀 Installation & Local Setup
+
+Get your local instances running in less than 3 minutes:
+
+### 1. Clone the Repository
+```bash
+git clone [https://github.com/ceeemm1995/TradeTrack.git](https://github.com/ceeemm1995/TradeTrack.git)
+cd TradeTrack
 
